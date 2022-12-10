@@ -1,10 +1,12 @@
-from cmd import IDENTCHARS
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.dispatcher import Dispatcher
 from aiogram import types 
 from create_bot import dp, bot
 from aiogram.dispatcher.filters import Text
+from data_base import sqlite_db
+from keyboards import admin_kb
+
 
 ID = None
 
@@ -19,7 +21,7 @@ class FSMAdmin(StatesGroup):
 async def make_changes_command(message: types.Message):
     global ID
     ID = message.from_user.id
-    await bot.send_message(message.from_user.id, 'Что хозяин надо???')
+    await bot.send_message(message.from_user.id, 'Что хозяин надо???', reply_markup=admin_kb.button_case_admin)
     await message.delete()
 
 
@@ -65,12 +67,12 @@ async def load_description(message: types.Message, state: FSMContext):
 # @dp.message_handler(state=FSMAdmin.price)
 async def load_price(message: types.Message, state: FSMContext):
     if message.from_user.id == ID:
-        async with state.proxy as data:
+        async with state.proxy() as data:
             data['price'] = float(message.text)
 
-        async with state.proxy() as data:
-            await message.reply(str(data))
+        await sqlite_db.sql_add_command(state)
         await state.finish()
+
 
 # Выход из состояний
 # @dp.message_handler(state="*", commands='отмена')
@@ -86,7 +88,7 @@ async def cancel_handler(message: types.Message, state: FSMContext):
 
 # Регистрирует хендлеры
 def register_handlers_admin(dp : Dispatcher):
-    dp.register_message_handler(cm_start, commands=['Загрузить'], sate=None)
+    dp.register_message_handler(cm_start, commands=['Загрузить'], state=None)
     dp.register_message_handler(load_photo, content_types=['photo'], state=FSMAdmin.photo)
     dp.register_message_handler(load_name, state=FSMAdmin.name)
     dp.register_message_handler(load_description, state=FSMAdmin.description)
